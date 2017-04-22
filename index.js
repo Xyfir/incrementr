@@ -1,11 +1,41 @@
-/*
+const nextCharacter = require('./lib/next-character');
+
+/**
+ * @typedef {object} CharacterOptions
+ * @property {boolean} numbers - If true, use numbers in id.
+ * @property {boolean} uppercase - If true, use uppercase letters in id.
+ * @property {boolean} lowercase - If true, user lowercase letters in id.
+ */
+/**
+ * @typedef {object} Options
+ * @property {CharacterOptions} characters
+ */
+
+/**
  * Increments an id string by one character.
- * @param {string} [id]
+ * @param {string} [id='0']
+ * @param {Options} [opt]
  * @returns {string}
  */
-module.exports = function(id = '0') {
+module.exports = function(id = '0', opt = {}) {
+
+  opt = Object.assign({
+    characters: {
+      numbers: true, uppercase: true, lowercase: true
+    }
+  }, opt);
+
+  // Build id pattern based on opt.characters properties
+  const regex = new RegExp(
+    '^[' +
+      (opt.characters.numbers ? '0-9' : '') +
+      (opt.characters.uppercase ? 'A-Z' : '') +
+      (opt.characters.lowercase ? 'a-z' : '') +
+    ']{1,}$'
+  );
   
-  if (!/^[A-Z0-9]{1,}$/.test(id)) throw 'Invalid id provided';
+  if (!regex.test(id))
+    throw `Invalid identifier provided. Must match ${regex.toString()}.`;
 
   id = id.split('');
 
@@ -16,18 +46,22 @@ module.exports = function(id = '0') {
     if (increment) {
       increment = false;
 
-      id[i] = nextCharacter(id[i].charCodeAt(0));
+      id[i] = nextCharacter(id[i].charCodeAt(0), opt.characters);
 
-      // If character is '0', it used to be 'Z', so the preceding character
-      // needs to be incremented as well
-      if (id[i] == '0') {
+      // Check if preceding character in string (next in loop) needs to be
+      // incremented as well
+      if (
+        (id[i] == '0') ||
+        (id[i] == 'A' && !opt.characters.numbers) ||
+        (id[i] == 'a' && !opt.characters.numbers && !opt.characters.uppercase)
+      ) {
         increment = true;
 
         // If the first character in the string needs to be incremented then
-        // add a new character at the end of the string, starting at '0'
+        // add a new character at the end of the string
         if (i == 0) {   
           increment = false;
-          id.push('0');
+          id.push(id[i]);
         }
       }
     }
@@ -38,18 +72,4 @@ module.exports = function(id = '0') {
 
   return id.join('');
 
-}
-
-/*
- * Returns the next character. Goes from '9' -> 'A', 'Z' -> '0', or + 1.
- * @param {number} code
- * @returns {string}
- */
-function nextCharacter(code) {
-  // 48 = 0, 57 = 9
-  // 65 = A, 90 = Z
-  if (code == 57)
-    return 'A';
-  else
-    return code < 90 ? String.fromCharCode(code + 1) : '0';
 }
